@@ -5,18 +5,18 @@ const Logout = ({ onAuthChange }) => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Clear tokens and update auth state
+        // Limpiar tokens y actualizar el estado de autenticación
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
 
         if (onAuthChange) {
-            onAuthChange();  // Notify the app about auth state change
+            onAuthChange();  // Notificar a la aplicación sobre el cambio de estado de autenticación
         }
 
-        // Redirect to login after a short delay
+        // Redirigir a la pantalla de inicio de sesión después de un breve retraso
         setTimeout(() => {
             navigate('/login');
-        }, 1000); // Adding a small delay for UX
+        }, 1000); // Agregar un pequeño retraso para la experiencia del usuario
     }, [navigate, onAuthChange]);
     
     return (

@@ -1,45 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { Box, Typography, Button, CircularProgress, RadioGroup, FormControlLabel, Radio, Fab } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const Challenge = () => {
-    const { token } = useParams();
+    const { token } = useParams(); 
+    const navigate = useNavigate();
     const [challenge, setChallenge] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedAnswer, setSelectedAnswer] = useState('');
     const [isAnswered, setIsAnswered] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState('');
     const [earnedPoints, setEarnedPoints] = useState(0);
-    const [hint, setHint] = useState('');
+    const [hint, setHint] = useState(''); 
     const [isHintShown, setIsHintShown] = useState(false);
-    const navigate = useNavigate();
-    const backendUrl = process.env.REACT_APP_API_URL; 
+    const backendUrl = process.env.REACT_APP_API_URL;
 
     useEffect(() => {
         const fetchChallenge = async () => {
-            if (!token) {
-                console.error("Token no válido.");
-                navigate('/home');
-                return;
-            }
-
             try {
-                const response = await axios.get(`${backendUrl}/get_challenge/${token}`, { 
+                const jwtToken = localStorage.getItem('access_token');
+                if (!jwtToken) throw new Error("No hay token disponible.");
+
+                const response = await fetch(`${backendUrl}/get_challenge/${token}`, {
+                    method: 'GET',
                     headers: {
-                        Authorization: `Bearer ${localStorage.getItem('access_token')}`
+                        'Authorization': `Bearer ${jwtToken}`
                     }
                 });
 
-                if (response.status === 200) {
-                    setChallenge(response.data);
+                if (response.ok) {
+                    const data = await response.json();
+                    setChallenge(data);
                 } else {
-                    console.error("Desafío no encontrado.");
+                    alert('No se pudo cargar el desafío.');
                     navigate('/home');
                 }
             } catch (error) {
-                console.error("Error al obtener el desafío:", error);
+                console.error("Error al cargar el desafío:", error);
                 navigate('/home');
             } finally {
                 setLoading(false);
@@ -47,174 +45,128 @@ const Challenge = () => {
         };
 
         fetchChallenge();
-    }, [token, backendUrl, navigate]);
+    }, [backendUrl, navigate, token]);
 
     const handleSolveChallenge = async () => {
         if (!selectedAnswer) {
             alert("Por favor, selecciona una respuesta.");
             return;
         }
-    
+
         try {
-            const response = await axios.post(`${backendUrl}/validate_answer/${token}`, {
-                answer: selectedAnswer
-            }, {
+            const response = await fetch(`${backendUrl}/validate_answer/${token}`, { 
+                method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${localStorage.getItem('access_token')}`
-                }
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`, 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ answer: selectedAnswer })
             });
-    
-            if (response.status === 200) {
-                setFeedbackMessage(response.data.message);
-                setIsAnswered(true);
-    
-                if (response.data.correct) {
-                    setEarnedPoints(response.data.points);
-                    await updateProgress(response.data.points);
-                }
-            } else {
-                setFeedbackMessage("Error al validar la respuesta.");
+
+            const data = await response.json();
+            setFeedbackMessage(data.message);
+            setIsAnswered(true);
+
+            if (data.correct) {
+                setEarnedPoints(data.points);
             }
         } catch (error) {
-            console.error("Error al validar la respuesta:", error);
-            setFeedbackMessage("Error al validar la respuesta.");
+            console.error('Error al validar la respuesta:', error);
         }
     };
-
-    const updateProgress = async (points) => {
-        try {
-            const response = await axios.post(`${backendUrl}/update_user_progress/${token}`, {}, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('access_token')}`
-                }
-            });
-    
-            if (response.status === 200) {
-                setFeedbackMessage((prev) => `${prev} ¡Has ganado ${points} puntos!`);
-            } else {
-                console.error("Error al actualizar el progreso del usuario.");
-            }
-        } catch (error) {
-            console.error("Error al actualizar el progreso del usuario:", error);
-        }
-    };    
 
     const fetchNextHint = async () => {
         try {
-            const response = await axios.get(`${backendUrl}/get_next_hint/${token}`, { 
+            const response = await fetch(`${backendUrl}/get_next_hint/${token}`, {
+                method: 'GET',
                 headers: {
-                    Authorization: `Bearer ${localStorage.getItem('access_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
 
-            if (response.status === 200) {
-                setHint(response.data.hint);
-                setIsHintShown(true);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.hint) {
+                    setHint(data.hint); // Asegurarse de que la pista se está estableciendo
+                    setIsHintShown(true); // Establecer correctamente el estado de la pista
+                } else {
+                    alert('No hay más pistas disponibles.');
+                }
             } else {
-                console.error("No se pudo obtener la siguiente pista.");
+                alert('No se pudo obtener la pista.');
             }
         } catch (error) {
-            console.error("Error al obtener la pista:", error);
+            console.error('Error al obtener la pista:', error);
         }
     };
 
+    const handleBackToHome = () => {
+        navigate('/home');
+    };
+
     if (loading) {
-        return (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-                <CircularProgress />
-            </Box>
-        );
+        return <CircularProgress />;
     }
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                bgcolor: 'background.default',
-                color: 'text.primary',
-                p: 3,
-            }}
-        >
-            {challenge ? (
-                <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" sx={{ mb: 2 }}>
-                        Desafío
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 4 }}>
-                        {challenge.question}
-                    </Typography>
+        <Box sx={{ textAlign: 'center', p: 3 }}>
+            <Typography variant="h4">Desafío</Typography>
+            {challenge && (
+                <>
+                    <Typography variant="h6">{challenge.question}</Typography>
                     <RadioGroup
                         value={selectedAnswer}
                         onChange={(e) => setSelectedAnswer(e.target.value)}
-                        sx={{ mb: 2 }}
                     >
                         {challenge.options.map((option, index) => (
                             <FormControlLabel
                                 key={index}
                                 value={option}
-                                control={<Radio disabled={isAnswered} />}
+                                control={<Radio />}
                                 label={option}
+                                disabled={isAnswered}
                             />
                         ))}
                     </RadioGroup>
-                    {!isAnswered ? (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleSolveChallenge}
-                            sx={{ mb: 2 }}
-                        >
-                            Resolver
-                        </Button>
-                    ) : hint ? (
-                        <>
-                            <Typography variant="body1" color="info.main" sx={{ mt: 2, mb: 2 }}>
-                                {hint}
-                            </Typography>
-                            <Button
-                                variant="contained"
-                                color="secondary"
-                                onClick={fetchNextHint}
-                                sx={{ mt: 2 }}
-                            >
-                                {isHintShown ? 'Regresar a Home' : 'Siguiente Pista'}
-                            </Button>
-                        </>
-                    ) : (
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={fetchNextHint}
-                            sx={{ mt: 2 }}
-                        >
-                            Siguiente Pista
+
+                    {/* Botón de Enviar Respuesta */}
+                    {!isAnswered && (
+                        <Button onClick={handleSolveChallenge} variant="contained" sx={{ mt: 2 }}>
+                            Enviar Respuesta
                         </Button>
                     )}
+
+                    {/* Mensaje de Retroalimentación */}
                     {feedbackMessage && (
-                        <Typography variant="body1" color={feedbackMessage.includes("correcta") ? "success.main" : "error"} sx={{ mt: 2 }}>
+                        <Typography variant="body1" sx={{ mt: 2 }}>
                             {feedbackMessage}
                         </Typography>
                     )}
-                </Box>
-            ) : (
-                <Typography variant="body1" color="error">
-                    No hay desafíos disponibles para esta ubicación.
-                </Typography>
+
+                    {/* Mostrar Botón de Pista si Respondido y Sin Pista Aún */}
+                    {isAnswered && !isHintShown && (
+                        <Button onClick={fetchNextHint} variant="outlined" sx={{ mt: 2 }}>
+                            Mostrar Pista
+                        </Button>
+                    )}
+
+                    {/* Mostrar Pista y Botón de Volver */}
+                    {isHintShown && (
+                        <>
+                            <Typography variant="body1" sx={{ mt: 2 }}>
+                                {hint}
+                            </Typography>
+                            <Button onClick={handleBackToHome} variant="contained" sx={{ mt: 2 }}>
+                                Volver al Inicio
+                            </Button>
+                        </>
+                    )}
+                </>
             )}
             <Fab
                 color="primary"
-                sx={{
-                    position: 'fixed',
-                    bottom: 60,
-                    right: 16,
-                    backgroundColor: '#43A047',
-                    '&:hover': { backgroundColor: '#2E7D32' },
-                }}
                 onClick={() => navigate('/home')}
+                sx={{ position: 'fixed', bottom: 16, right: 16 }}
             >
                 <ArrowBackIcon />
             </Fab>

@@ -11,7 +11,7 @@ const Register = ({ onAuthChange }) => {
     const [formErrors, setFormErrors] = useState({});
     const [backendError, setBackendError] = useState('');
     const navigate = useNavigate();
-    const backendUrl = process.env.REACT_APP_API_URL;  // Fixed the variable name
+    const backendUrl = process.env.REACT_APP_API_URL;  // Corregido el nombre de la variable
 
     const validateForm = () => {
         let errors = {};
@@ -60,7 +60,7 @@ const Register = ({ onAuthChange }) => {
             const data = await response.json();
     
             if (response.ok) {
-                localStorage.setItem('access_token', data.access_token);  // Fixed token key name
+                localStorage.setItem('access_token', data.access_token);  // Corregido el nombre de la clave del token
                 localStorage.setItem('refresh_token', data.refresh_token); 
                 onAuthChange(); 
                 navigate('/home');

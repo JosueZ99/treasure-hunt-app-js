@@ -9,9 +9,9 @@ const Login = ({ onAuthChange }) => {
     const [backendError, setBackendError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
-    const backendUrl = process.env.REACT_APP_API_URL; // ✅ Corrected the environment variable.
+    const backendUrl = process.env.REACT_APP_API_URL; // Corregida la variable de entorno.
 
-    // ✅ Form Validation Function
+    // Función de validación del formulario
     const validateForm = () => {
         let errors = {};
 
@@ -28,7 +28,7 @@ const Login = ({ onAuthChange }) => {
         return errors;
     };
 
-    // ✅ Submit Handler
+    // Manejador de envío
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -41,7 +41,7 @@ const Login = ({ onAuthChange }) => {
         }
     
         try {
-            // ✅ Changed the endpoint to match the backend route `/login`
+            // Cambiado el endpoint para que coincida con la ruta del backend `/login`
             const response = await fetch(`${backendUrl}/login`, {
                 method: 'POST',
                 headers: {
@@ -53,10 +53,10 @@ const Login = ({ onAuthChange }) => {
             const data = await response.json();
     
             if (response.ok) {
-                // ✅ Fixed token key naming issues
+                // Corregidos los problemas de nomenclatura de las claves del token
                 localStorage.setItem('access_token', data.access_token);
                 localStorage.setItem('refresh_token', data.refresh_token);
-                onAuthChange(); // Update the auth state
+                onAuthChange(); // Actualizar el estado de autenticación
                 navigate('/home'); 
             } else {
                 setBackendError(data.error || 'Credenciales incorrectas');
@@ -68,12 +68,12 @@ const Login = ({ onAuthChange }) => {
         }
     };
 
-    // ✅ Redirect to Register Page
+    // Redirigir a la página de registro
     const handleRegister = () => {
         navigate('/register');
     };
 
-    // ✅ UI Code (No Changes Needed)
+    // Código de la interfaz de usuario (No se necesitan cambios)
     return (
         <Box
             sx={{

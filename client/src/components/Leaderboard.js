@@ -8,9 +8,8 @@ const Leaderboard = ({ onBack, currentUser }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-    const backendUrl = process.env.REACT_APP_API_URL;  // ✅ Fixed the variable name
+    const backendUrl = process.env.REACT_APP_API_URL; 
 
-    // ✅ Fixed the fetch function
     const fetchLeaderboard = async () => {
         const token = localStorage.getItem('access_token');
         
@@ -21,7 +20,7 @@ const Leaderboard = ({ onBack, currentUser }) => {
         }
 
         try {
-            const response = await fetch(`${backendUrl}/leaderboard`, {  // ✅ Removed the extra `/api`
+            const response = await fetch(`${backendUrl}/leaderboard`, {  
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -68,14 +67,14 @@ const Leaderboard = ({ onBack, currentUser }) => {
                 borderRadius: 3,
             }}
         >
-            {/* Header */}
+            {/* Encabezado */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 4 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1B5E20' }}>
-                    🌱Ranking de Puntos🌱
+                    Ranking de Puntos
                 </Typography>
             </Box>
 
-            {/* Loading, Error, or List */}
+            {/* Cargando, Error, o Lista */}
             {loading ? (
                 <CircularProgress sx={{ color: '#1E88E5' }} />
             ) : error ? (
@@ -122,7 +121,7 @@ const Leaderboard = ({ onBack, currentUser }) => {
                 </Box>
             )}
 
-            {/* Floating Back Button */}
+            {/* Botón flotante de regreso */}
             <Fab
                 color="primary"
                 sx={{

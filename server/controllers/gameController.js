@@ -1,4 +1,3 @@
-// controllers/gameController.js
 const moment = require('moment');
 const { Op } = require('sequelize');
 const {
@@ -14,11 +13,11 @@ const {
 
 /**
  * GET /api/leaderboard
- * Similar to Django's get_leaderboard
+ * Similar a get_leaderboard de Django
  */
 exports.getLeaderboard = async (req, res) => {
   try {
-    // Get leaderboard entries sorted by total_points desc
+    // Obtener entradas del leaderboard ordenadas por total_points desc
     const leaderboardEntries = await Leaderboard.findAll({
       order: [['total_points', 'DESC']],
       include: [
@@ -48,25 +47,25 @@ exports.getLeaderboard = async (req, res) => {
 
 /**
  * POST /api/scan-qr
- * Scans a QR code and generates a QR access token for challenges
+ * Escanea un código QR y genera un token de acceso QR para desafíos
  */
 exports.scanQrCode = async (req, res) => {
   try {
-    const { userId } = req.user;      // Extract user from JWT middleware
-    const { qr_code } = req.body;     // Extract qr_code from request body
+    const { userId } = req.user;      // Extraer usuario del middleware JWT
+    const { qr_code } = req.body;     // Extraer qr_code del cuerpo de la solicitud
 
-    // ✅ Check if qr_code was provided
+    // Verificar si se proporcionó qr_code
     if (!qr_code) {
       return res.status(400).json({ error: 'El código QR es obligatorio.' });
     }
 
-    // ✅ Find the location linked to the QR code
+    // Encontrar la ubicación vinculada al código QR
     const location = await Location.findOne({ where: { qr_code } });
     if (!location) {
       return res.status(404).json({ error: 'Código QR no válido.' });
     }
 
-    // ✅ Check if user already completed this location
+    // Verificar si el usuario ya completó esta ubicación
     let userProgress = await UserProgress.findOne({
       where: { user_id: userId, location_id: location.id }
     });
@@ -75,20 +74,20 @@ exports.scanQrCode = async (req, res) => {
       return res.status(403).json({ error: 'Ya has completado este desafío.' });
     }
 
-    // ✅ Generate a unique token using UUID
-    const { v4: uuidv4 } = require('uuid');  // Ensure UUID import is present
+    // Generar un token único usando UUID
+    const { v4: uuidv4 } = require('uuid');  // Asegurarse de que la importación de UUID esté presente
     const token = uuidv4();
     const expiresAt = moment().add(15, 'minutes').toDate(); 
 
-    // ✅ Create a QRAccessToken entry
+    // Crear una entrada QRAccessToken
     const qrToken = await QRAccessToken.create({
       user_id: userId,
       location_id: location.id,
-      token: token, // Ensure token is stored correctly
+      token: token, // Asegurarse de que el token se almacene correctamente
       expires_at: expiresAt
     });
 
-    // ✅ If user progress doesn't exist, create a new entry
+    // Si el progreso del usuario no existe, crear una nueva entrada
     if (!userProgress) {
       await UserProgress.create({
         user_id: userId,
@@ -99,7 +98,7 @@ exports.scanQrCode = async (req, res) => {
       });
     }
 
-    // ✅ Return success response with the generated token
+    // Devolver respuesta de éxito con el token generado
     return res.status(200).json({
       message: 'QR escaneado con éxito.',
       location: location.name,
@@ -107,72 +106,61 @@ exports.scanQrCode = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ scanQrCode Error:', error.message);
+    console.error('scanQrCode Error:', error.message);
     return res.status(500).json({ error: 'Error interno del servidor.' });
   }
 };
 
 /**
  * GET /api/get_challenge/:token
- * Similar to Django's get_challenge
+ * Obtiene el desafío usando el token QR, no el token JWT.
  */
 exports.getChallenge = async (req, res) => {
   try {
-    const { userId } = req.user;
-    const { token } = req.params;
+      const { token } = req.params; // Ahora usando el token QR de la URL
+      const { userId } = req.user;
 
-    // 1. Find the QRAccessToken
-    const qrToken = await QRAccessToken.findOne({
-      where: { token },
-      include: ['user', 'location']
-    });
-    if (!qrToken) {
-      return res.status(404).json({ error: 'Token inválido.' });
-    }
-
-    // 2. Check if expired
-    if (moment().isAfter(moment(qrToken.expires_at))) {
-      return res.status(403).json({ error: 'El token ha expirado.' });
-    }
-
-    // 3. Check user progress
-    const userProgress = await UserProgress.findOne({
-      where: {
-        user_id: userId,
-        location_id: qrToken.location_id
+      // Asegurarse de que se reciba el token y sea correcto
+      if (!token) {
+          return res.status(400).json({ error: 'Token no proporcionado.' });
       }
-    });
-    if (userProgress && userProgress.completed) {
-      return res
-        .status(403)
-        .json({ message: 'Este desafío ya ha sido completado.' });
-    }
 
-    // 4. Fetch the challenge for this location
-    const challenge = await Challenge.findOne({
-      where: { location_id: qrToken.location_id }
-    });
+      const qrToken = await QRAccessToken.findOne({
+          where: { token },
+          include: ['location']
+      });
 
-    if (!challenge) {
-      return res
-        .status(404)
-        .json({ message: 'No hay desafíos disponibles para esta ubicación.' });
-    }
+      if (!qrToken) {
+          return res.status(404).json({ error: 'Token no válido.' });
+      }
 
-    return res.status(200).json({
-      question: challenge.question,
-      points: challenge.points,
-      options: challenge.options
-    });
+      if (moment().isAfter(moment(qrToken.expires_at))) {
+          return res.status(403).json({ error: 'El token ha expirado.' });
+      }
+
+      const challenge = await Challenge.findOne({
+          where: { location_id: qrToken.location_id }
+      });
+
+      if (!challenge) {
+          return res.status(404).json({ error: 'No se encontró un desafío para esta ubicación.' });
+      }
+
+      return res.status(200).json({
+          question: challenge.question,
+          points: challenge.points,
+          options: challenge.options
+      });
+
   } catch (error) {
-    console.error('getChallenge Error:', error);
-    return res.status(500).json({ error: 'Error interno del servidor.' });
+      console.error('getChallenge Error:', error);
+      return res.status(500).json({ error: 'Error interno del servidor.' });
   }
 };
 
 /**
  * POST /api/validate_answer/:token
- * Similar to Django's validate_answer
+ * Similar a validate_answer de Django
  */
 exports.validateAnswer = async (req, res) => {
   try {
@@ -180,18 +168,18 @@ exports.validateAnswer = async (req, res) => {
     const { token } = req.params;
     const { answer } = req.body;
 
-    // 1. Find QRAccessToken
+    // 1. Encontrar QRAccessToken
     const qrToken = await QRAccessToken.findOne({ where: { token } });
     if (!qrToken) {
       return res.status(404).json({ error: 'Token inválido.' });
     }
 
-    // 2. Check if expired
+    // 2. Verificar si ha expirado
     if (moment().isAfter(moment(qrToken.expires_at))) {
       return res.status(403).json({ error: 'El token ha expirado.' });
     }
 
-    // 3. Check if user already completed
+    // 3. Verificar si el usuario ya completó
     const userProgress = await UserProgress.findOne({
       where: { user_id: userId, location_id: qrToken.location_id }
     });
@@ -201,7 +189,7 @@ exports.validateAnswer = async (req, res) => {
         .json({ message: 'Este desafío ya ha sido completado.' });
     }
 
-    // 4. Find challenge
+    // 4. Encontrar desafío
     const challenge = await Challenge.findOne({
       where: { location_id: qrToken.location_id }
     });
@@ -211,15 +199,15 @@ exports.validateAnswer = async (req, res) => {
         .json({ error: 'No se encontró el desafío para esta ubicación.' });
     }
 
-    // 5. Compare answers (case-insensitive)
+    // 5. Comparar respuestas (sin distinguir mayúsculas)
     if (answer && challenge.correct_answer.toLowerCase() === answer.toLowerCase()) {
-      // Mark progress completed
+      // Marcar progreso como completado
       userProgress.completed = true;
       userProgress.completed_at = new Date();
       userProgress.points_earned += challenge.points;
       await userProgress.save();
 
-      // Return success
+      // Devolver éxito
       return res.status(200).json({
         message: 'Respuesta correcta.',
         points: challenge.points,
@@ -239,7 +227,7 @@ exports.validateAnswer = async (req, res) => {
 
 /**
  * POST /api/update_user_progress/:token
- * Similar to Django's update_user_progress
+ * Similar a update_user_progress de Django
  */
 exports.updateUserProgress = async (req, res) => {
   try {
@@ -251,7 +239,7 @@ exports.updateUserProgress = async (req, res) => {
       return res.status(404).json({ error: 'Token inválido.' });
     }
 
-    // Check expiration
+    // Verificar expiración
     if (moment().isAfter(moment(qrToken.expires_at))) {
       return res.status(403).json({ error: 'El token ha expirado.' });
     }
@@ -263,7 +251,7 @@ exports.updateUserProgress = async (req, res) => {
       return res.status(404).json({ error: 'No hay desafíos disponibles.' });
     }
 
-    // Find or create user progress
+    // Encontrar o crear progreso del usuario
     let userProgress = await UserProgress.findOne({
       where: { user_id: userId, location_id: qrToken.location_id }
     });
@@ -282,10 +270,10 @@ exports.updateUserProgress = async (req, res) => {
       await userProgress.save();
     }
 
-    // Update the leaderboard
+    // Actualizar el leaderboard
     let leaderboard = await Leaderboard.findOne({ where: { user_id: userId } });
     if (!leaderboard) {
-      // If user somehow doesn't have a leaderboard record yet
+      // Si el usuario de alguna manera no tiene un registro en el leaderboard aún
       leaderboard = await Leaderboard.create({
         user_id: userId,
         total_points: challenge.points
@@ -295,7 +283,7 @@ exports.updateUserProgress = async (req, res) => {
       await leaderboard.save();
     }
 
-    // Log participation
+    // Registrar participación
     await ParticipationHistory.create({
       user_id: userId,
       location_id: qrToken.location_id,
@@ -309,55 +297,64 @@ exports.updateUserProgress = async (req, res) => {
   }
 };
 
-/**
- * GET /api/get_next_hint/:token
- * Similar to Django's get_next_hint
- */
 exports.getNextHint = async (req, res) => {
-  try {
-    const { userId } = req.user;
-    const { token } = req.params;
+    try {
+        const { userId } = req.user;
+        const { token } = req.params;
 
-    // 1. Check token
-    const qrToken = await QRAccessToken.findOne({ where: { token } });
-    if (!qrToken) {
-      return res.status(404).json({ error: 'Token inválido.' });
+        // Validar presencia del token
+        if (!token) {
+            return res.status(400).json({ error: 'Token no proporcionado.' });
+        }
+
+        // Verificar si el token existe
+        const qrToken = await QRAccessToken.findOne({ where: { token } });
+        if (!qrToken) {
+            return res.status(404).json({ error: 'Token no válido.' });
+        }
+
+        // Verificar si el token ha expirado
+        if (moment().isAfter(moment(qrToken.expires_at))) {
+            return res.status(403).json({ error: 'El token ha expirado.' });
+        }
+
+        // Obtener progreso del usuario para esta ubicación
+        const userProgress = await UserProgress.findOne({
+            where: { user_id: userId, location_id: qrToken.location_id }
+        });
+
+        if (!userProgress) {
+            return res.status(404).json({ error: 'Progreso del usuario no encontrado.' });
+        }
+
+        // Obtener la primera pista disponible para esta ubicación (ignorando `order`)
+        const hint = await Hint.findOne({
+            where: { location_id: qrToken.location_id }
+        });
+
+        // Si no se encuentra ninguna pista, devolver un mensaje
+        if (!hint) {
+            return res.status(200).json({
+                message: 'No hay más pistas disponibles para esta ubicación.'
+            });
+        }
+
+        // Prevenir múltiples pistas si ya se mostró
+        if (userProgress.current_hint > 1) {
+            return res.status(200).json({
+                message: 'Ya has visto la pista para esta ubicación.',
+                hint: hint.text
+            });
+        }
+
+        // Marcar que la pista ha sido mostrada
+        userProgress.current_hint += 1;
+        await userProgress.save();
+
+        // Devolver la pista
+        return res.status(200).json({ hint: hint.text });
+    } catch (error) {
+        console.error('getNextHint Error:', error);
+        return res.status(500).json({ error: 'Error interno del servidor.' });
     }
-
-    if (moment().isAfter(moment(qrToken.expires_at))) {
-      return res.status(403).json({ error: 'El token ha expirado.' });
-    }
-
-    // 2. Find userProgress
-    const userProgress = await UserProgress.findOne({
-      where: { user_id: userId, location_id: qrToken.location_id }
-    });
-    if (!userProgress) {
-      return res.status(404).json({ error: 'No se encontró progreso.' });
-    }
-
-    // 3. Grab the next hint (based on current_hint)
-    const nextHint = await Hint.findOne({
-      where: {
-        location_id: qrToken.location_id,
-        order: userProgress.current_hint
-      }
-    });
-
-    if (!nextHint) {
-      // No more hints
-      return res.status(200).json({
-        message: 'No hay más pistas disponibles para esta ubicación.'
-      });
-    }
-
-    // Increment current_hint
-    userProgress.current_hint += 1;
-    await userProgress.save();
-
-    return res.status(200).json({ hint: nextHint.text });
-  } catch (error) {
-    console.error('getNextHint Error:', error);
-    return res.status(500).json({ error: 'Error interno del servidor.' });
-  }
 };

@@ -18,26 +18,26 @@ const Layout = ({ children, userName = "Usuario", userPoints = 0 }) => {
         setAnchorEl(null);
     };
 
-    // ✅ Changed logout to navigate properly
+    // Cambiado logout para navegar correctamente
     const handleLogout = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         handleClose();
-        navigate('/login'); // ✅ Redirecting using React Router instead of window.href
+        navigate('/login'); // Redirigiendo usando React Router en lugar de window.href
     };
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-            {/* Navbar */}
+            {/* Barra de navegación */}
             {!hideNavbar && (
                 <AppBar position="sticky" color="primary">
                     <Toolbar sx={{ justifyContent: 'space-between', gap: 2 }}>
-                        {/* User Menu */}
+                        {/* Menú de usuario */}
                         <Box>
                             <IconButton
                                 edge="start"
                                 color="inherit"
-                                aria-label="user menu"
+                                aria-label="menú de usuario"
                                 onClick={handleMenu}
                                 sx={{ p: 0, ml: 0.1 }}
                             >
@@ -63,7 +63,7 @@ const Layout = ({ children, userName = "Usuario", userPoints = 0 }) => {
                             </Menu>
                         </Box>
 
-                        {/* User Points */}
+                        {/* Puntos del usuario */}
                         <Typography variant="h6" component="div">
                             {`${userPoints} pts`}
                         </Typography>
@@ -71,7 +71,7 @@ const Layout = ({ children, userName = "Usuario", userPoints = 0 }) => {
                 </AppBar>
             )}
 
-            {/* Main Content Section */}
+            {/* Sección de contenido principal */}
             <Box
                 component="main"
                 sx={{
@@ -84,7 +84,7 @@ const Layout = ({ children, userName = "Usuario", userPoints = 0 }) => {
                 <Container>{children}</Container>
             </Box>
 
-            {/* Footer Section */}
+            {/* Sección de pie de página */}
             <Box
                 component="footer"
                 sx={{
